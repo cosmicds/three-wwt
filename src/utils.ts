@@ -4,15 +4,25 @@ import * as THREE from "three";
 type ThreeJS = typeof THREE;
 
 let threeJS: ThreeJS;
+let eclipticToWWT: THREE.Matrix4;
 export function setThree(three: ThreeJS) {
   threeJS = three;
+  updateWorldTransformMatrix(threeJS);
+}
+
+function updateWorldTransformMatrix(three: ThreeJS) {
+  eclipticToWWT = new three.Matrix4().set(
+    1, 0, 0, 0,
+    0, 0, 1, 0,
+    0, 1, 0, 0,
+    0, 0, 0, 1,
+  );  
 }
 
 interface DummyCanvasOptions {
   opacity?: number;
   attach?: boolean;
 }
-
 
 function matchDimensions(source: HTMLCanvasElement, target: HTMLCanvasElement) {
   target.style.width = source.style.width;
@@ -57,6 +67,7 @@ export function createDummyCanvas(canvas: HTMLCanvasElement, options?: DummyCanv
 export function createTHREECamera(renderContext: RenderContext, far=1) {
   const camera = new threeJS.PerspectiveCamera(75, renderContext.width / renderContext.height, renderContext.nearPlane, far);
   camera.matrixAutoUpdate = false;
+  camera.matrixWorldAutoUpdate = false;
   return camera;
 }
 
@@ -112,6 +123,8 @@ export function updateTHREECamera(camera: THREE.PerspectiveCamera, renderContext
   // @ts-expect-error `get_view` exists
   camera.matrixWorldInverse.copy(wwtMatrixToTHREE(renderContext.get_view()));
   camera.matrixWorld.copy(camera.matrixWorldInverse).invert();
+  camera.matrixWorldInverse.multiply(eclipticToWWT);
+  camera.matrixWorld.premultiply(eclipticToWWT);
   camera.matrixWorldNeedsUpdate = false;
 }
 
